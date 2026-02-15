@@ -6,6 +6,8 @@ A Go web service API for file listing, storage, and retrieval across multiple fi
 
 The HTTP layer receives a `Storage` interface via dependency injection and delegates all file I/O to it. Backend selection happens once at startup based on environment configuration.
 
+**Requires Go 1.22+** for stdlib method-based HTTP routing and AWS SDK v2 compatibility (see ADR-010). Module path: `go-crud-api`.
+
 ## Components
 
 ### 1. HTTP API Layer (`internal/api/`)
@@ -23,8 +25,10 @@ REST handlers for file operations. Receives a `Storage` interface, delegates all
 | `GET`    | `/api/v1/files/stat?path=`| Get file metadata      |
 | `GET`    | `/api/v1/health`          | Health check           |
 
+Uses Go 1.22+ `net/http.ServeMux` with method-based patterns (see ADR-011). No third-party router.
+
 **Key files:**
-- `router.go` — Route registration
+- `router.go` — Route registration via `mux.HandleFunc("GET /api/v1/files", h.List)` patterns
 - `handler.go` — HTTP handlers (depend on `storage.Storage`)
 - `response.go` — Shared JSON response helpers
 
