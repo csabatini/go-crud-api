@@ -45,6 +45,10 @@ go build ./... 2>&1 || echo "Build failed or Go not available"
 echo ""
 echo "=== Go Vet Check ==="
 go vet ./... 2>&1 || echo "Vet failed or Go not available"
+
+echo ""
+echo "=== Test Coverage ==="
+go test -cover ./... 2>&1 || echo "Tests failed or Go not available"
 ```
 
 ## Output Format
@@ -53,6 +57,7 @@ go vet ./... 2>&1 || echo "Vet failed or Go not available"
 |------|-------|--------|-------|
 | Source code | N files | ... | ... |
 | Tests | N files | ... | ... |
+| Test coverage | N% per package | ... | ... |
 | Documentation | ... | ... | ... |
 
 ### RuleCatch Report
