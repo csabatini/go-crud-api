@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Go web service API for file listing, storage, and retrieval across multiple file protocols. The system uses an interface-based storage abstraction so backends (local filesystem, SMB, FTP) can be swapped without changing HTTP handlers.
+A Go web service API for file listing, storage, and retrieval across multiple file protocols. The system uses an interface-based storage abstraction so backends (local filesystem, SMB, FTP, AWS S3) can be swapped without changing HTTP handlers.
 
 The HTTP layer receives a `Storage` interface via dependency injection and delegates all file I/O to it. Backend selection happens once at startup based on environment configuration.
 
@@ -52,17 +52,18 @@ type Storage interface {
 
 Shared sentinel errors: `ErrNotFound`, `ErrPermission`.
 
-### 3. Storage Backends (`internal/storage/{local,smb,ftp}/`)
+### 3. Storage Backends (`internal/storage/{local,smb,ftp,s3}/`)
 
 Each backend is its own package implementing `storage.Storage`:
 
 - **local** — Uses the `os` package directly. Scoped to a configurable root directory to prevent path traversal.
 - **smb** — Uses an SMB2 client library (e.g. `github.com/hirochachacha/go-smb2`). Manages SMB sessions and shares.
 - **ftp** — Uses an FTP client library (e.g. `github.com/jlaffaye/ftp`). Manages connection pooling.
+- **s3** — Uses the AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`). Maps file paths to S3 object keys within a configured bucket. Supports IAM roles, static credentials, and regional endpoints.
 
 ### 4. Configuration (`internal/config/`)
 
-Loads from environment variables (via `.env`). Determines which backend to activate and supplies backend-specific settings (SMB host/share/credentials, FTP host/credentials, local root path).
+Loads from environment variables (via `.env`). Determines which backend to activate and supplies backend-specific settings (SMB host/share/credentials, FTP host/credentials, local root path, S3 bucket/region/credentials).
 
 ### 5. Middleware (`internal/middleware/`)
 
@@ -89,6 +90,7 @@ Client Request
     +---> [local.Storage]  --> os.Open / os.Create / os.ReadDir
     +---> [smb.Storage]    --> SMB2 session --> remote share
     +---> [ftp.Storage]    --> FTP connection --> remote server
+    +---> [s3.Storage]     --> AWS SDK --> S3 bucket
     |
     v
 [HTTP Response] --> JSON metadata or streamed file content
@@ -134,8 +136,10 @@ go-crud-api/
 │       │   └── local.go             # Local filesystem backend
 │       ├── smb/
 │       │   └── smb.go               # SMB protocol backend
-│       └── ftp/
-│           └── ftp.go               # FTP protocol backend
+│       ├── ftp/
+│       │   └── ftp.go               # FTP protocol backend
+│       └── s3/
+│           └── s3.go                # AWS S3 backend
 ├── tests/
 │   └── integration/                 # Integration tests per backend
 ├── project-docs/
@@ -149,10 +153,10 @@ go-crud-api/
 
 ## Security Considerations
 
-- **Path traversal** — `pathguard` middleware normalizes and rejects any path containing `..` before it reaches a backend. Each backend also scopes operations to its configured root/share.
-- **Credentials** — SMB/FTP credentials come from environment variables only, never hardcoded.
+- **Path traversal** — `pathguard` middleware normalizes and rejects any path containing `..` before it reaches a backend. Each backend also scopes operations to its configured root/share/bucket.
+- **Credentials** — SMB/FTP/S3 credentials come from environment variables only, never hardcoded. The S3 backend also supports IAM roles and instance profiles for credential-free deployments on AWS infrastructure.
 - **File size limits** — `http.MaxBytesReader` on upload endpoints to prevent out-of-memory conditions.
-- **Streaming** — Both upload and download use `io.Reader`/`io.ReadCloser` rather than buffering entire files in memory.
+- **Streaming** — Both upload and download use `io.Reader`/`io.ReadCloser` rather than buffering entire files in memory. The S3 backend uses the SDK's streaming upload/download APIs to maintain this guarantee.
 
 ## Wiring (Dependency Injection)
 
@@ -170,6 +174,8 @@ func main() {
         store = smb.New(cfg.SMB.Host, cfg.SMB.Share, cfg.SMB.User, cfg.SMB.Password)
     case "ftp":
         store = ftp.New(cfg.FTP.Host, cfg.FTP.Port, cfg.FTP.User, cfg.FTP.Password)
+    case "s3":
+        store = s3.New(cfg.S3.Bucket, cfg.S3.Region, cfg.S3.Prefix)
     default:
         log.Fatalf("unknown storage backend: %s", cfg.StorageBackend)
     }

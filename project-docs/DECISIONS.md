@@ -6,10 +6,10 @@
 
 - **Date:** 2026-02-15
 - **Status:** Accepted
-- **Context:** The API must support multiple file protocols (local filesystem, SMB, FTP) and allow swapping backends without changing HTTP handler code. We need a clean abstraction that decouples protocol-specific logic from the API layer.
+- **Context:** The API must support multiple file protocols (local filesystem, SMB, FTP, AWS S3) and allow swapping backends without changing HTTP handler code. We need a clean abstraction that decouples protocol-specific logic from the API layer.
 - **Decision:** Define a single `storage.Storage` Go interface with five methods (`List`, `Read`, `Write`, `Delete`, `Stat`). Each backend implements this interface in its own package. HTTP handlers accept the interface via dependency injection.
 - **Consequences:**
-  - Adding a new backend (e.g. S3, SFTP) requires only implementing the interface in a new package and adding a case to the startup switch — no handler changes.
+  - Adding a new backend (e.g. SFTP) requires only implementing the interface in a new package and adding a case to the startup switch — no handler changes. The S3 backend validates this: it was added with zero modifications to existing handlers.
   - Testing becomes trivial: mock the interface to test handlers without a real filesystem.
   - Each backend is isolated; SMB dependencies don't affect FTP code.
   - Tradeoff: protocol-specific features (e.g. SMB file locking) cannot be exposed through the generic interface without extending it.
@@ -31,7 +31,7 @@
 - **Date:** 2026-02-15
 - **Status:** Accepted
 - **Context:** Each file protocol (local, SMB, FTP) has different dependencies, connection semantics, and configuration requirements. Mixing them in a single package would create tight coupling and import bloat.
-- **Decision:** Each backend lives in its own sub-package under `internal/storage/` (e.g. `internal/storage/local/`, `internal/storage/smb/`, `internal/storage/ftp/`). Each package only imports the libraries it needs.
+- **Decision:** Each backend lives in its own sub-package under `internal/storage/` (e.g. `internal/storage/local/`, `internal/storage/smb/`, `internal/storage/ftp/`, `internal/storage/s3/`). Each package only imports the libraries it needs.
 - **Consequences:**
   - Clear separation of concerns — changes to the FTP backend cannot break the SMB backend.
   - Build dependencies are scoped: if you only use the local backend, SMB/FTP libraries are not compiled in (assuming build tags or selective imports).
@@ -82,3 +82,30 @@
   - External consumers cannot import our handlers, storage implementations, or config — reducing the API surface we need to maintain.
   - Follows standard Go project layout conventions.
   - If we later need to expose a client SDK, we would create a separate `pkg/` directory for public types.
+
+### ADR-008: AWS S3 Storage Backend
+
+- **Date:** 2026-02-15
+- **Status:** Accepted
+- **Context:** In addition to filesystem-based protocols (local, SMB, FTP), the service needs to support cloud object storage. AWS S3 is the most widely adopted object storage service and is often required for production deployments where durability, scalability, and availability matter.
+- **Decision:** Add an S3 backend (`internal/storage/s3/`) using the AWS SDK for Go v2 (`github.com/aws/aws-sdk-go-v2`). The backend maps file paths to S3 object keys within a configured bucket. It supports the standard AWS credential chain: environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`), IAM roles, and instance profiles.
+- **Consequences:**
+  - The service can run on AWS infrastructure without managing credentials manually (via IAM roles).
+  - S3 provides 11 nines of durability — suitable for production file storage.
+  - The `List` operation maps to `ListObjectsV2` with prefix-based filtering; S3 has no true directory concept, so directory semantics are simulated using `/` delimiters and `CommonPrefixes`.
+  - The `Stat` operation maps to `HeadObject`.
+  - Streaming is fully supported: `GetObject` returns a streaming body, and `PutObject` accepts an `io.Reader`.
+  - Tradeoff: S3 is eventually consistent for certain operations (e.g. listing immediately after a write may not reflect the new object). This is acceptable for this service's use cases.
+  - Tradeoff: the AWS SDK is a heavier dependency than the SMB/FTP client libraries, but it is well-maintained and widely used.
+
+### ADR-009: S3 Path-to-Key Mapping
+
+- **Date:** 2026-02-15
+- **Status:** Accepted
+- **Context:** The `Storage` interface uses filesystem-style paths (e.g. `/docs/report.pdf`), but S3 uses flat object keys with no real directory hierarchy. We need a consistent mapping between the two.
+- **Decision:** The S3 backend strips the leading `/` from the file path and prepends an optional configurable prefix (`S3_PREFIX`) to form the object key. For example, with prefix `data/`, path `/docs/report.pdf` becomes key `data/docs/report.pdf`. The `List` operation uses the mapped prefix with `/` as the delimiter to simulate directory listing via `CommonPrefixes`.
+- **Consequences:**
+  - File paths behave identically regardless of backend — callers don't need to know about S3 key conventions.
+  - The optional prefix allows multiple logical filesystems within a single S3 bucket (e.g. per-tenant isolation).
+  - `IsDir` in `FileInfo` is inferred from `CommonPrefixes` results rather than a real directory attribute.
+  - Empty "directories" (zero-byte keys ending in `/`) are not created; directories exist implicitly when objects exist beneath them.
