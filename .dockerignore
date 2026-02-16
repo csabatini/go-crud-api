@@ -10,6 +10,7 @@ build/
 coverage/
 test-results/
 playwright-report/
+data/
 *.md
 .claude/
 .vscode/

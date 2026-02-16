@@ -16,17 +16,30 @@ A Go web service API for file listing, storage, and retrieval across multiple fi
 ## Getting Started
 
 1. Copy `.env.example` to `.env` and fill in your values
-2. Build and run the project:
+2. Build and run:
 
 ```bash
-go build -o go-storage-api ./cmd/server
-STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 ./go-storage-api
+go build -o server ./cmd/server
+STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 ./server
 ```
 
 Or run directly:
 
 ```bash
 STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 go run ./cmd/server
+```
+
+### Docker
+
+Build and run with Docker:
+
+```bash
+docker build -t go-storage-api .
+docker run -p 8080:8080 \
+  -e STORAGE_BACKEND=local \
+  -e LOCAL_ROOT_PATH=/data \
+  -v $(pwd)/data:/data \
+  go-storage-api
 ```
 
 ## API Endpoints
@@ -40,11 +53,41 @@ STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 go run ./cmd/server
 | `GET`    | `/api/v1/files/stat?path=`     | Get file metadata      |
 | `GET`    | `/api/v1/health`               | Health check           |
 
+## API Usage
+
+```bash
+# Health check
+curl localhost:8080/api/v1/health
+
+# Upload a file
+curl -X POST -F "file=@report.pdf" "localhost:8080/api/v1/files/upload?path=/docs/report.pdf"
+
+# List directory
+curl "localhost:8080/api/v1/files?path=/docs"
+
+# File metadata
+curl "localhost:8080/api/v1/files/stat?path=/docs/report.pdf"
+
+# Download a file
+curl -o report.pdf "localhost:8080/api/v1/files/download?path=/docs/report.pdf"
+
+# Delete a file
+curl -X DELETE "localhost:8080/api/v1/files?path=/docs/report.pdf"
+```
+
 ## Configuration
 
 The active storage backend is selected via the `STORAGE_BACKEND` environment variable. Only the variables for the selected backend are required.
 
-See `.env.example` for the full list of environment variables.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | Server listen port |
+| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `STORAGE_BACKEND` | `local` | Backend: `local`, `smb`, `ftp`, `s3` |
+| `MAX_UPLOAD_SIZE` | `104857600` | Max upload size in bytes (default 100MB) |
+| `LOCAL_ROOT_PATH` | `./data` | Root directory for local backend |
+
+See `.env.example` for the full list including SMB, FTP, and S3 variables.
 
 ## Project Structure
 

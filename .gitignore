@@ -34,5 +34,10 @@ CLAUDE.local.md
 # Logs
 *.log
 
+# Go binary
+server
+
 # Data
 data/
+data/*
+!data/.gitkeep
