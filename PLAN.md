@@ -7,7 +7,7 @@ The project has complete architecture documentation (ARCHITECTURE.md, DECISIONS.
 ## Prerequisites
 
 - **Go 1.22+** — Required for stdlib method-based HTTP routing and AWS SDK v2 compatibility (see ADR-010)
-- **Module path:** `go-crud-api`
+- **Module path:** `go-storage-api`
 
 ## Implementation Phases
 
@@ -21,7 +21,7 @@ Create the module, storage interface, config loader, and response helpers.
 
 | File | Purpose |
 |------|---------|
-| `go.mod` | Module `go-crud-api`, Go 1.22 |
+| `go.mod` | Module `go-storage-api`, Go 1.22 |
 | `internal/storage/storage.go` | `Storage` interface, `FileInfo` struct (with JSON tags), `ErrNotFound`/`ErrPermission` sentinel errors |
 | `internal/config/config.go` | `Config` struct with nested backend configs. `Load()` reads env vars. Validates backend-specific vars only for the selected backend. |
 | `internal/config/config_test.go` | Test defaults, parsing, backend-specific validation using `t.Setenv()` |

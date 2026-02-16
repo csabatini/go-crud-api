@@ -6,7 +6,7 @@ A Go web service API for file listing, storage, and retrieval across multiple fi
 
 The HTTP layer receives a `Storage` interface via dependency injection and delegates all file I/O to it. Backend selection happens once at startup based on environment configuration.
 
-**Requires Go 1.22+** for stdlib method-based HTTP routing and AWS SDK v2 compatibility (see ADR-010). Module path: `go-crud-api`.
+**Requires Go 1.22+** for stdlib method-based HTTP routing and AWS SDK v2 compatibility (see ADR-010). Module path: `go-storage-api`.
 
 ## Components
 
@@ -119,7 +119,7 @@ Client Request
 ## Folder Structure
 
 ```
-go-crud-api/
+go-storage-api/
 ├── cmd/
 │   └── server/
 │       └── main.go                  # Entry point: wires config, storage, router

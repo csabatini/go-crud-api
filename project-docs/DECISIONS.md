@@ -135,15 +135,15 @@
   - If the API grows to need path parameters, regex matching, or complex middleware per-route, the stdlib mux may become limiting. At that point, migrating to `chi` (which uses the same `http.Handler` interface) would be straightforward.
   - Middleware is applied globally via handler wrapping, not per-route. This is sufficient for our needs (logging, request ID, and path guard all apply to every route).
 
-### ADR-012: Module Path `go-crud-api`
+### ADR-012: Module Path `go-storage-api`
 
 - **Date:** 2026-02-15
 - **Status:** Accepted
 - **Context:** Go modules require a module path declared in `go.mod`. Convention for publicly hosted modules is to use the repository URL (e.g. `github.com/user/repo`). For private or standalone projects, a simple name suffices.
-- **Decision:** Use `go-crud-api` as the module path. Internal imports use this directly (e.g. `go-crud-api/internal/storage`).
+- **Decision:** Use `go-storage-api` as the module path. Internal imports use this directly (e.g. `go-storage-api/internal/storage`).
 - **Consequences:**
   - Simple and concise import paths throughout the codebase.
-  - If the module is later published to a public repository, the module path would need to change to include the full repository URL (e.g. `github.com/csabatini/go-crud-api`). This would require updating all internal imports — a breaking change best done before any external consumers exist.
+  - If the module is later published to a public repository, the module path would need to change to include the full repository URL (e.g. `github.com/csabatini/go-storage-api`). This would require updating all internal imports — a breaking change best done before any external consumers exist.
   - For a standalone service that is not imported by other Go modules, a short path is preferable for developer ergonomics.
 
 ### ADR-013: Backend Cleanup via io.Closer Type Assertion

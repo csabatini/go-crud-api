@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"go-crud-api/internal/storage"
+	"go-storage-api/internal/storage"
 )
 
 func newTestStorage(t *testing.T) *Storage {

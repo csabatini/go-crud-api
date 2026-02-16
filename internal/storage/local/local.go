@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-crud-api/internal/storage"
+	"go-storage-api/internal/storage"
 )
 
 // Storage implements storage.Storage against the local filesystem.

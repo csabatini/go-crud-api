@@ -1,4 +1,4 @@
-# go-crud-api
+# go-storage-api
 
 A Go web service API for file listing, storage, and retrieval across multiple file protocols. The service uses an interface-based storage abstraction so backends can be swapped without changing application code.
 
@@ -19,8 +19,8 @@ A Go web service API for file listing, storage, and retrieval across multiple fi
 2. Build and run the project:
 
 ```bash
-go build -o go-crud-api ./cmd/server
-STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 ./go-crud-api
+go build -o go-storage-api ./cmd/server
+STORAGE_BACKEND=local LOCAL_ROOT_PATH=./data PORT=8080 ./go-storage-api
 ```
 
 Or run directly:
@@ -49,7 +49,7 @@ See `.env.example` for the full list of environment variables.
 ## Project Structure
 
 ```
-go-crud-api/
+go-storage-api/
 ├── cmd/
 │   └── server/
 │       └── main.go                  # Entry point: wires config, storage, router
