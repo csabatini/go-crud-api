@@ -38,6 +38,5 @@ CLAUDE.local.md
 server
 
 # Data
-data/
 data/*
 !data/.gitkeep
